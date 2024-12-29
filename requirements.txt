@@ -1,3 +1,4 @@
 pygame
 opencv-python
 pymongo
+mediapipe
