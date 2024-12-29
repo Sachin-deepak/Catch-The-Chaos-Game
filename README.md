@@ -33,7 +33,7 @@
 
 ## Installation
 
-The game is likely written in Python and require libraries like OpenCV for computer vision and mongoDB for Database management. Follow the steps below to install and set up the game:
+The game is likely written in Python and require libraries like OpenCV for computer vision, pymongo for database management and mediapipe. Follow the steps below to install and set up the game:
 
 1. Clone the repository:
    ```bash
