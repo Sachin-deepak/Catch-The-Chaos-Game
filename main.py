@@ -51,6 +51,7 @@ user_profiles = {}
 achievements = {
     "First Catch": {"description": "Catch your first falling object.", "completed": False},
     "Score 10": {"description": "Reach a score of 10.", "completed": False},
+    "Score 25": {"description": "Reach a score of 25.", "completed": False},
     "Score 50": {"description": "Reach a score of 50.", "completed": False},
     "Score 100": {"description": "Reach a score of 100.", "completed": False},
 }
@@ -136,6 +137,60 @@ def display_leaderboard():
                 exit()
             if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
                 waiting = False
+# Function: Register or Log In with Profile Management
+def register_or_login_user():
+    bg = pygame.image.load("name.png")  # Replace with your image path
+    bg = pygame.transform.scale(bg, (screen_width, screen_height))
+    screen.fill(BLACK)
+    screen.blit(bg, (0, 0))
+    #display_text("Enter Username: ", screen_width // 2 - 150, screen_height // 2 - 50, yellow)
+    pygame.display.flip()
+
+    username = ""
+    input_active = True
+
+    while input_active:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:
+                    input_active = False
+                elif event.key == pygame.K_BACKSPACE:
+                    username = username[:-1]  # Remove last character
+                elif event.key == pygame.K_ESCAPE:
+                    pygame.quit()
+                    exit()
+                else:
+                    username += event.unicode  # Add new character
+
+        # Clear the screen and redraw the prompt and username
+        screen.fill(BLACK)
+        screen.blit(bg, (0, 0)) 
+        #display_text("Enter Username: ", screen_width // 2 - 150, screen_height // 2 - 50, yellow)
+        
+        # Display the current username
+        display_text(username, screen_width // 2 - 150, screen_height // 2, gray)  # Display username in green
+
+        pygame.display.flip()  # Update the display
+
+    # Load user profile from MongoDB
+    user_profile = users_collection.find_one({"username": username})
+    if user_profile:
+        print(f"Welcome back, {username}!")
+    else:
+        print("User registered successfully!")
+        user_profile = {"username": username, "score": 0, "achievements": []}
+        users_collection.insert_one(user_profile)
+
+    # Load achievements into user_profiles
+    user_profiles[username] = {
+        "score": user_profile.get("score", 0),
+        "achievements": user_profile.get("achievements", [])
+    }
+
+    return username
 
 
 # Function: Display Home Screen
@@ -159,8 +214,7 @@ def display_home_screen():
                 if event.key == pygame.K_a:  # View achievements on 'A' key
                     return "view_achievements"
                 if event.key == pygame.K_ESCAPE:  # Exit on Escape key
-                    pygame.quit()
-                    exit()
+                    return "register_or_login_user"
 
         # Draw the background image
         screen.blit(bg, (0, 0))
@@ -203,58 +257,6 @@ def display_home_screen():
         
         pygame.display.flip()
         clock.tick(60)  # Maintain frame rate
-
-# Function: Register or Log In with Profile Management
-def register_or_login_user():
-    bg = pygame.image.load("name.png")  # Replace with your image path
-    bg = pygame.transform.scale(bg, (screen_width, screen_height))
-    screen.fill(BLACK)
-    screen.blit(bg, (0, 0))
-    #display_text("Enter Username: ", screen_width // 2 - 150, screen_height // 2 - 50, yellow)
-    pygame.display.flip()
-
-    username = ""
-    input_active = True
-
-    while input_active:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                exit()
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_RETURN:
-                    input_active = False
-                elif event.key == pygame.K_BACKSPACE:
-                    username = username[:-1]  # Remove last character
-                else:
-                    username += event.unicode  # Add new character
-
-        # Clear the screen and redraw the prompt and username
-        screen.fill(BLACK)
-        screen.blit(bg, (0, 0)) 
-        #display_text("Enter Username: ", screen_width // 2 - 150, screen_height // 2 - 50, yellow)
-        
-        # Display the current username
-        display_text(username, screen_width // 2 - 150, screen_height // 2, gray)  # Display username in green
-
-        pygame.display.flip()  # Update the display
-
-    # Load user profile from MongoDB
-    user_profile = users_collection.find_one({"username": username})
-    if user_profile:
-        print(f"Welcome back, {username}!")
-    else:
-        print("User registered successfully!")
-        user_profile = {"username": username, "score": 0, "achievements": []}
-        users_collection.insert_one(user_profile)
-
-    # Load achievements into user_profiles
-    user_profiles[username] = {
-        "score": user_profile.get("score", 0),
-        "achievements": user_profile.get("achievements", [])
-    }
-
-    return username
 
 
 # Function: Game Over Screen (Updated for Alignment)
@@ -473,14 +475,14 @@ def main_game(username, difficulty):
 
         else:
             # Display pause message
-            pause_text = font.render("Game Paused. Press ESC to Resume or M for Main Menu.", True, WHITE)
+            pause_text = font.render("Game Paused. Press ESC to Resume.", True, WHITE)
             screen.blit(pause_text, (screen_width // 2 - pause_text.get_width() // 2, screen_height // 2))
 
             # Check for menu option
             for event in pygame.event.get():
                 if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_m:  # Check for M key to go to main menu
-                        return "menu"  # Return to main menu
+                    if event.key == pygame.K_SPACE:  # Check for M key to go to main menu
+                        return game_over_screen(score, username, difficulty)
 
         pygame.display.flip()
         clock.tick(60)  # Set to 60 FPS for smoother performance
@@ -569,22 +571,11 @@ def check_achievements(score, username):
         user_profiles[username] = {"score": 0, "achievements": []}
 
     # Check for achievements
-    if "First Catch" not in user_profiles[username]["achievements"] and score >= 1:
-        user_profiles[username]["achievements"].append("First Catch")
-        print("Achievement unlocked: First Catch!")
-
-    if "Score 10" not in user_profiles[username]["achievements"] and score >= 10:
-        user_profiles[username]["achievements"].append("Score 10")
-        print("Achievement unlocked: Score 10!")
-
-    if "Score 50" not in user_profiles[username]["achievements"] and score >= 50:
-        user_profiles[username]["achievements"].append("Score 50")
-        print("Achievement unlocked: Score 50!")
-
-    if "Score 100" not in user_profiles[username]["achievements"] and score >= 100:
-        user_profiles[username]["achievements"].append("Score 100")
-        print("Achievement unlocked: Score 100!")
-
+    for achievement in achievements.keys():  # Iterate through defined achievements
+        if achievement not in user_profiles[username]["achievements"] and score >= int(achievement.split()[1]):
+            user_profiles[username]["achievements"].append(achievement)
+            print(f"Achievement unlocked: {achievement}!")
+    
     save_user_profiles()  # Save profiles after checking achievements
 
 # Function to display achievements
@@ -675,5 +666,5 @@ while True:
     
     elif outcome == "view_achievements":
         display_achievements_screen(username)  # Show achievements screen
-
-
+    elif outcome == "register_or_login_user":
+        register_or_login_user()
